@@ -1,72 +1,148 @@
 package jp.ac.titech.itpro.sdl.walkcounter;
 
+import java.util.*;
+
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
-    private final static String TAG = MainActivity.class.getSimpleName();
+    final static String TAG = MainActivity.class.getSimpleName();
+    private final int REQUEST_CODE = 1000;
 
-    private RotationView rotationView;
-    private SensorManager manager;
-    private Sensor gyroscope;
+    private long steps=0;
 
-    private long prevTimestamp=0;
-    private float omega=0;
+    SharedPreferences prefs;
+    private BarChart barChart;
+    private ArrayList<Long> x = new ArrayList<>();
+    private ArrayList<Long> y = new ArrayList<>();
+
+    ArrayList<BarEntry> entryList = new ArrayList<>();
+
+    protected class UpdateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent){
+            Bundle extras = intent.getExtras();
+            steps += extras.getLong("Steps");
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, REQUEST_CODE);
+        if(savedInstanceState != null){
+            x = (ArrayList<Long>) savedInstanceState.getSerializable("x");
+            y = (ArrayList<Long>) savedInstanceState.getSerializable("y");
+        }
         setContentView(R.layout.activity_main);
         Log.d(TAG, "onCreate");
+        prefs = getSharedPreferences("Data", Context.MODE_PRIVATE);
 
-        rotationView = findViewById(R.id.rotation_view);
+        UpdateReceiver receiver = new UpdateReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("SEND_STEPS");
+        registerReceiver(receiver, filter);
 
-        manager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        if (manager == null) {
-            Toast.makeText(this, R.string.toast_no_sensor_manager, Toast.LENGTH_LONG).show();
-            finish();
-            return;
+        for(int i=0; i<x.toArray().length; i++) {
+            entryList.add(new BarEntry(x.get(i), y.get(i)));
         }
-        gyroscope = manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        if (gyroscope == null) {
-            Toast.makeText(this, R.string.toast_no_gyroscope, Toast.LENGTH_LONG).show();
-        }
+
+        Log.d(TAG, "starting service");
+        Intent intent=new Intent(getApplication(),CountService.class);
+        startService(intent);
+
+        BarDataSet barDataSet = new BarDataSet(entryList, "steps");
+        barDataSet.setColor(Color.BLUE);
+
+        BarData barData = new BarData(barDataSet);
+
+        barChart = findViewById(R.id.barChartExample);
+        barChart.setData(barData);
+
+        barChart.setVisibleXRangeMaximum(60);
+        barChart.getXAxis().setEnabled(true);
+        barChart.getXAxis().setTextColor(Color.BLACK);
+
+        barChart.invalidate();
+
+        Handler handler = new Handler();
+        Runnable minStepCount = new Runnable(){
+            private long min=0;
+            public void run(){
+                Log.d("cycle",String.valueOf(steps));
+                BarData data = barChart.getData();
+                IBarDataSet set = data.getDataSetByIndex(0);
+                if(data == null || set == null) return;
+                x.add(min);
+                y.add(steps);
+                steps = 0;
+
+                data.addEntry(new BarEntry(set.getEntryCount(),(float)steps),0);
+                min++;
+                barChart.setVisibleXRangeMaximum(60);
+                barChart.moveViewToX(data.getDataSetCount() - 61);
+                barChart.notifyDataSetChanged();
+                barChart.invalidate();
+                handler.postDelayed(this,60000);
+            }
+        };
+        handler.post(minStepCount);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume");
-        manager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause");
-        manager.unregisterListener(this);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        float omegaZ = event.values[2];  // z-axis angular velocity (rad/sec)
-        long ts = event.timestamp;
-        if (prevTimestamp != 0) {
-            omega = omega + omegaZ * (ts - prevTimestamp) / 1000000000;
-        }
-        rotationView.setDirection(omega);
-        prevTimestamp = ts;
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         Log.d(TAG, "onAccuracyChanged: accuracy=" + accuracy);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState){
+        super.onSaveInstanceState(outState);
+        outState.putSerializable("x",x);
+        outState.putSerializable("y",y);
+    }
+
+    @Override
+    public void onDestroy(){
+        Intent intent=new Intent(getApplication(),CountService.class);
+        stopService(intent);
+        super.onDestroy();
     }
 }

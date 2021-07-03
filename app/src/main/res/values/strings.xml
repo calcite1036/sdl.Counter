@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">WalkCounter</string>
-
     <string name="toast_no_sensor_manager">No sensor manager available</string>
-    <string name="toast_no_gyroscope">No gyroscope available</string>
+    <string name="toast_no_stepdetector">No step_detector available</string>
+    <string name="toast_no_stepcounter">No step_counter available</string>
 </resources>
