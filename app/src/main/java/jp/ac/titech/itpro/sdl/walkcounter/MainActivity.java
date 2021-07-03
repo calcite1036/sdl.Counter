@@ -65,6 +65,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         filter.addAction("SEND_STEPS");
         registerReceiver(receiver, filter);
 
+        x.add((long)1);
+        y.add((long)1);
         for(int i=0; i<x.toArray().length; i++) {
             entryList.add(new BarEntry(x.get(i), y.get(i)));
         }
@@ -85,8 +87,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         barChart.getXAxis().setEnabled(true);
         barChart.getXAxis().setTextColor(Color.BLACK);
 
-        barChart.invalidate();
-
         Handler handler = new Handler();
         Runnable minStepCount = new Runnable(){
             private long min=0;
@@ -94,17 +94,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 Log.d("cycle",String.valueOf(steps));
                 BarData data = barChart.getData();
                 IBarDataSet set = data.getDataSetByIndex(0);
-                if(data == null || set == null) return;
                 x.add(min);
                 y.add(steps);
+                data.addEntry(new BarEntry((float)min, (float)steps),0);
+                min++;
                 steps = 0;
 
-                data.addEntry(new BarEntry(set.getEntryCount(),(float)steps),0);
-                min++;
-                barChart.setVisibleXRangeMaximum(60);
-                barChart.moveViewToX(data.getDataSetCount() - 61);
+                data.notifyDataChanged();
                 barChart.notifyDataSetChanged();
                 barChart.invalidate();
+                barChart.setVisibleXRangeMaximum(60);
+                barChart.moveViewToX(data.getDataSetCount() - 61);
                 handler.postDelayed(this,60000);
             }
         };
