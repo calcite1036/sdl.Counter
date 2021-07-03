@@ -21,10 +21,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.formatter.IAxisValueFormatter;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
@@ -37,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private BarChart barChart;
     private ArrayList<Long> x = new ArrayList<>();
     private ArrayList<Long> y = new ArrayList<>();
+    private ArrayList<String> mins = new ArrayList<>();
 
     ArrayList<BarEntry> entryList = new ArrayList<>();
 
@@ -65,8 +69,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         filter.addAction("SEND_STEPS");
         registerReceiver(receiver, filter);
 
-        x.add((long)1);
-        y.add((long)1);
+        x.add((long)0);
+        y.add((long)0);
+
         for(int i=0; i<x.toArray().length; i++) {
             entryList.add(new BarEntry(x.get(i), y.get(i)));
         }
@@ -75,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Intent intent=new Intent(getApplication(),CountService.class);
         startService(intent);
 
-        BarDataSet barDataSet = new BarDataSet(entryList, "steps");
+        BarDataSet barDataSet = new BarDataSet(entryList, "歩数");
         barDataSet.setColor(Color.BLUE);
 
         BarData barData = new BarData(barDataSet);
@@ -83,32 +88,44 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         barChart = findViewById(R.id.barChartExample);
         barChart.setData(barData);
 
-        barChart.setVisibleXRangeMaximum(60);
-        barChart.getXAxis().setEnabled(true);
+        barChart.setDrawValueAboveBar(false);
+        barChart.getDescription().setText("分");
+
+        barChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        barChart.getXAxis().setDrawGridLines(false);
+        barChart.getXAxis().setEnabled(false);
         barChart.getXAxis().setTextColor(Color.BLACK);
+
+        barChart.setVisibleXRangeMaximum(60);
+
+        barChart.getAxisLeft().setAxisMinimum(0);
+        barChart.getAxisRight().setEnabled(false);
 
         Handler handler = new Handler();
         Runnable minStepCount = new Runnable(){
-            private long min=0;
+            private long min=1;
             public void run(){
                 Log.d("cycle",String.valueOf(steps));
                 BarData data = barChart.getData();
                 IBarDataSet set = data.getDataSetByIndex(0);
                 x.add(min);
                 y.add(steps);
-                data.addEntry(new BarEntry((float)min, (float)steps),0);
+                mins.add(String.valueOf(min) + "分目");
+                data.addEntry(new BarEntry((float)min,(float)steps),0);
                 min++;
                 steps = 0;
 
+                barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
+                barChart.getXAxis().setEnabled(true);
                 data.notifyDataChanged();
                 barChart.notifyDataSetChanged();
                 barChart.invalidate();
                 barChart.setVisibleXRangeMaximum(60);
-                barChart.moveViewToX(data.getDataSetCount() - 61);
-                handler.postDelayed(this,60000);
+                barChart.moveViewToX(data.getEntryCount());
+                handler.postDelayed(this,1000);
             }
         };
-        handler.post(minStepCount);
+        handler.postDelayed(minStepCount,1000);
     }
 
     @Override
