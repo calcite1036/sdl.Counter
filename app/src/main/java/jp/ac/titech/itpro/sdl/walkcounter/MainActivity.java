@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }else{
             x.add((long)0);
             y.add((long)0);
-            min=1;
+            min=0;
         }
         setContentView(R.layout.activity_main);
         Log.d(TAG, "onCreate");
@@ -97,18 +97,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         barChart.getXAxis().setEnabled(false);
         barChart.getXAxis().setTextColor(Color.BLACK);
 
-        barChart.setVisibleXRangeMaximum(60);
-
         barChart.getAxisLeft().setAxisMinimum(0);
         barChart.getAxisRight().setEnabled(false);
 
+        barChart.setVisibleXRangeMaximum(60);
         BarData data = barChart.getData();
+        data.setBarWidth((float)1);
         barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
-        barChart.getXAxis().setEnabled(true);
         data.notifyDataChanged();
         barChart.notifyDataSetChanged();
         barChart.invalidate();
-        barChart.setVisibleXRangeMaximum(60);
         barChart.moveViewToX(data.getEntryCount());
 
 
@@ -124,12 +122,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 x.add(min);
                 y.add(steps);
                 mins.add(String.valueOf(min));
-                data.addEntry(new BarEntry((float) min, (float) steps), 0);
+                data.addEntry(new BarEntry(set.getEntryCount(), (float) steps), 0);
                 min += 5;
                 steps = 0;
 
+                barChart.setFitBars(true);
                 barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
                 barChart.getXAxis().setEnabled(true);
+                data.setBarWidth((float)1);
                 data.notifyDataChanged();
                 barChart.notifyDataSetChanged();
                 barChart.invalidate();
