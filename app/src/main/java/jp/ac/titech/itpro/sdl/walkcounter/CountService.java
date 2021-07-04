@@ -1,5 +1,6 @@
 package jp.ac.titech.itpro.sdl.walkcounter;
 
+import android.app.*;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -9,7 +10,10 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 import android.app.Service;
@@ -17,11 +21,15 @@ import android.app.Service;
 import static jp.ac.titech.itpro.sdl.walkcounter.MainActivity.TAG;
 
 public class CountService extends Service implements SensorEventListener {
-    SharedPreferences prefs;
     private SensorManager manager;
     private Sensor stepCounter;
     long prevSteps=0;
 
+    private Looper looper;
+    private Handler handler;
+
+    private String channelId = "service";
+    private String title = "CountService";
 
     protected void sendSteps(Long Steps){
         Intent broadcast = new Intent();
@@ -43,7 +51,17 @@ public class CountService extends Service implements SensorEventListener {
         }
         manager.registerListener(this, stepCounter, SensorManager.SENSOR_DELAY_FASTEST);
 
-        prefs = getSharedPreferences("Data",Context.MODE_PRIVATE);
+        NotificationManager notificationManager = (NotificationManager)getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationChannel channel = new NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_DEFAULT);
+        if(notificationManager != null) {
+            notificationManager.createNotificationChannel(channel);
+            Notification notification = new Notification.Builder(getApplicationContext(), channelId)
+                    .setContentTitle(title)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentText("service start")
+                    .build();
+            startForeground(1, notification);
+        }
     }
 
     @Override
@@ -60,7 +78,6 @@ public class CountService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        SharedPreferences.Editor editor = prefs.edit();
         Sensor sensor = event.sensor;
         float[] values = event.values;
         long curSteps = 0;
