@@ -1,0 +1,98 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/textHeight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="身長"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/editHeight"
+        />
+
+    <EditText
+        android:id="@+id/editHeight"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:hint="入力してください"
+        app:layout_constraintBottom_toTopOf="@id/textWeight"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textHeight" />
+
+    <TextView
+        android:id="@+id/textWeight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="体重"
+        app:layout_constraintTop_toBottomOf="@id/editHeight"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/editWeight"
+        />
+
+    <EditText
+        android:id="@+id/editWeight"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:hint="入力してください"
+        app:layout_constraintBottom_toTopOf="@id/textNormaForHour"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textWeight" />
+
+    <TextView
+        android:id="@+id/textNormaForHour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1時間の目標距離(km)"
+        app:layout_constraintTop_toBottomOf="@id/editWeight"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/editNormaForHour"
+        />
+
+    <EditText
+        android:id="@+id/editNormaForHour"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:hint="入力してください"
+        app:layout_constraintBottom_toTopOf="@id/textNormaForDay"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textNormaForHour" />
+
+    <TextView
+        android:id="@+id/textNormaForDay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1日の目標距離(km)"
+        app:layout_constraintTop_toBottomOf="@id/editNormaForHour"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/editNormaForDay"
+        />
+
+    <EditText
+        android:id="@+id/editNormaForDay"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:hint="入力してください"
+        app:layout_constraintBottom_toTopOf="@id/button_send"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textNormaForDay" />
+
+    <Button
+        android:id="@+id/button_send"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="決定"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/editNormaForDay"
+        tools:layout_editor_absoluteX="320dp"
+        tools:layout_editor_absoluteY="0dp" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

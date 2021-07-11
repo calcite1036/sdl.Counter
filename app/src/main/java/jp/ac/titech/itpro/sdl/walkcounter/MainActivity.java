@@ -48,6 +48,12 @@ public class MainActivity extends TabActivity {
         tab3.setContent(intent);
         tabhost.addTab(tab3);
 
+        TabSpec tab4 = tabhost.newTabSpec("tab4");
+        tab4.setIndicator("設定");
+        intent = new Intent().setClass(this, Activity4.class);
+        tab4.setContent(intent);
+        tabhost.addTab(tab4);
+
         tabhost.setCurrentTab(0);
     }
 

@@ -211,7 +211,7 @@ public class Activity1 extends Activity implements SensorEventListener {
         executor.execute(new Runnable() {
             @Override
             public void run(){
-                try{sd.insert(new stepData(m,s));}
+                try{sd.insert(new stepData(m,s*60));}
                 catch (Exception e){Log.e(TAG, "cannot write stepdata to db");}
                 updateGraph();
             }
