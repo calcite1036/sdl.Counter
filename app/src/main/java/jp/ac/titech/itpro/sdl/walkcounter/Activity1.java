@@ -106,7 +106,7 @@ public class Activity1 extends Activity implements SensorEventListener {
                 min += 5;
                 steps = 0;
             }
-        }, 5, 5, TimeUnit.SECONDS);
+        }, 5, 5, TimeUnit.MINUTES);
     }
 
     @Override
@@ -211,7 +211,7 @@ public class Activity1 extends Activity implements SensorEventListener {
         executor.execute(new Runnable() {
             @Override
             public void run(){
-                try{sd.insert(new stepData(m,s*60));}
+                try{sd.insert(new stepData(m,s));}
                 catch (Exception e){Log.e(TAG, "cannot write stepdata to db");}
                 updateGraph();
             }
