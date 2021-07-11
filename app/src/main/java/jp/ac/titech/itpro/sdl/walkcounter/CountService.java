@@ -83,13 +83,11 @@ public class CountService extends Service implements SensorEventListener {
         long curSteps = 0;
 
         if(sensor.getType() == Sensor.TYPE_STEP_COUNTER){
-            Log.d("type_step_counter",String.valueOf(values[0]));
             if(prevSteps != 0){
                 curSteps += (long) event.values[0] - prevSteps;
             }
-            Log.d("CountService/prevSteps",String.valueOf(prevSteps));
             prevSteps = (long) event.values[0];
-            Log.d("CountService/curSteps:",String.valueOf(curSteps));
+            Log.d("CountService","前回計測から" + curSteps + "歩歩きました");
             sendSteps(curSteps);
         }
     }

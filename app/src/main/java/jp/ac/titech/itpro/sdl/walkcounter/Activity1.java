@@ -1,6 +1,10 @@
 package jp.ac.titech.itpro.sdl.walkcounter;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import android.Manifest;
 import android.app.Activity;
@@ -17,6 +21,8 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,21 +37,22 @@ import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 
+import jp.ac.titech.itpro.sdl.walkcounter.db.*;
+
 public class Activity1 extends Activity implements SensorEventListener {
     final static String TAG = Activity1.class.getSimpleName();
     private final int REQUEST_CODE = 1000;
 
+    private appDatabase db;
+    private stepDao sd;
     private long steps=0;
     private long min;
 
     private BarChart barChart;
-    private ArrayList<Long> x = new ArrayList<>();
-    private ArrayList<Long> y = new ArrayList<>();
-    private ArrayList<String> mins = new ArrayList<>();
-
-    ArrayList<BarEntry> entryList = new ArrayList<>();
+    private Button deleteButton;
 
     Handler handler = new Handler();
+    ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
     Runnable minStepCount;
 
     protected class UpdateReceiver extends BroadcastReceiver {
@@ -61,13 +68,8 @@ public class Activity1 extends Activity implements SensorEventListener {
         super.onCreate(savedInstanceState);
         requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, REQUEST_CODE);
         if(savedInstanceState != null){
-            x = (ArrayList<Long>) savedInstanceState.getSerializable("x");
-            y = (ArrayList<Long>) savedInstanceState.getSerializable("y");
-            mins = (ArrayList<String>) savedInstanceState.getSerializable("mins");
             min = savedInstanceState.getLong("min");
         }else{
-            x.add((long)0);
-            y.add((long)0);
             min=0;
         }
         setContentView(R.layout.activity1);
@@ -78,67 +80,33 @@ public class Activity1 extends Activity implements SensorEventListener {
         filter.addAction("SEND_STEPS");
         registerReceiver(receiver, filter);
 
-        for(int i=0; i<x.toArray().length; i++) {
-            entryList.add(new BarEntry(x.get(i), y.get(i)));
-        }
+        db = appDatabaseSingleton.getInstance(getApplicationContext());
+        sd = db.getstepDao();
+        updateGraph();
 
-        BarDataSet barDataSet = new BarDataSet(entryList, "歩数");
-        barDataSet.setColor(Color.BLUE);
-
-        BarData barData = new BarData(barDataSet);
-
-        barChart = findViewById(R.id.barChartExample);
-        barChart.setData(barData);
-
-        barChart.setDrawValueAboveBar(false);
-        barChart.getDescription().setText("分");
-
-        barChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
-        barChart.getXAxis().setDrawGridLines(false);
-        barChart.getXAxis().setEnabled(false);
-        barChart.getXAxis().setTextColor(Color.BLACK);
-
-        barChart.getAxisLeft().setAxisMinimum(0);
-        barChart.getAxisRight().setEnabled(false);
-
-        barChart.setVisibleXRangeMaximum(12);
-        BarData data = barChart.getData();
-        data.setBarWidth((float)1);
-        barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
-        data.notifyDataChanged();
-        barChart.notifyDataSetChanged();
-        barChart.invalidate();
-        barChart.moveViewToX(data.getEntryCount());
+        deleteButton = findViewById(R.id.button_delete);
+        deleteButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                deleteData();
+            }
+        });
 
         Log.d(TAG, "starting service");
         Intent intent = new Intent(getApplication(), CountService.class);
         startService(intent);
 
-        minStepCount = new Runnable() {
+        se.scheduleAtFixedRate(new Runnable() {
             public void run() {
-                Log.d("cycle", String.valueOf(steps));
+                Log.d(TAG , "合計" + steps + "歩歩いたので記録します");
                 BarData data = barChart.getData();
                 IBarDataSet set = data.getDataSetByIndex(0);
-                x.add(min);
-                y.add(steps);
-                mins.add(String.valueOf(min));
-                data.addEntry(new BarEntry(set.getEntryCount(), (float) steps), 0);
+                insertData(String.valueOf(min),steps);
+                updateGraph();
                 min += 5;
                 steps = 0;
-
-                barChart.setFitBars(true);
-                barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
-                barChart.getXAxis().setEnabled(true);
-                data.setBarWidth((float)1);
-                data.notifyDataChanged();
-                barChart.notifyDataSetChanged();
-                barChart.invalidate();
-                barChart.setVisibleXRangeMaximum(12);
-                barChart.moveViewToX(data.getEntryCount());
-                handler.postDelayed(this, 5000);
             }
-        };
-        handler.postDelayed(minStepCount, 5000);
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
     @Override
@@ -165,9 +133,6 @@ public class Activity1 extends Activity implements SensorEventListener {
     @Override
     public void onSaveInstanceState(Bundle outState){
         Log.d(TAG, "onSaveInstanceState");
-        outState.putSerializable("x",x);
-        outState.putSerializable("y",y);
-        outState.putSerializable("mins",mins);
         outState.putLong("min",min);
         super.onSaveInstanceState(outState);
     }
@@ -178,6 +143,93 @@ public class Activity1 extends Activity implements SensorEventListener {
         Intent intent = new Intent(getApplication(), CountService.class);
         stopService(intent);
         handler.removeCallbacks(minStepCount);
+        se.shutdown();
         super.onDestroy();
+    }
+
+    public void updateGraph(){
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(new Runnable() {
+            @Override
+            public void run(){
+                List<stepData> stepdata = null;
+                List<String> mins = new ArrayList<>();
+                ArrayList<BarEntry> entryList = new ArrayList<>();
+                try{ stepdata = sd.getDataForAll();} catch(Exception e) { Log.e(TAG,"cannot get stepdata");}
+
+                entryList.add(new BarEntry(0, 0));
+
+                if(stepdata != null) {
+                    for (int i = 0; i < stepdata.toArray().length; i++) {
+                        entryList.add(new BarEntry(i+1, stepdata.get(i).getSteps()));
+                        mins.add(stepdata.get(i).getMinute());
+                    }
+                }
+                Log.d(TAG,"got " + stepdata.toArray().length +" stepdata from db");
+
+
+                handler.post(new Runnable(){
+                   @Override
+                   public void run(){
+                       Log.d(TAG ,"start to write graph");
+                       BarDataSet barDataSet = new BarDataSet(entryList, "歩数");
+                       barDataSet.setColor(Color.BLUE);
+
+                       BarData barData = new BarData(barDataSet);
+
+                       barChart = findViewById(R.id.barChartExample);
+                       barChart.setData(barData);
+
+                       barChart.setDrawValueAboveBar(false);
+                       barChart.getDescription().setText("分");
+
+                       barChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+                       barChart.getXAxis().setDrawGridLines(false);
+                       barChart.getXAxis().setEnabled(false);
+                       barChart.getXAxis().setTextColor(Color.BLACK);
+
+                       barChart.getAxisLeft().setAxisMinimum(0);
+                       barChart.getAxisRight().setEnabled(false);
+
+                       barChart.setVisibleXRangeMaximum(12);
+                       BarData data = barChart.getData();
+                       data.setBarWidth((float)1);
+                       //barChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(mins));
+                       data.notifyDataChanged();
+                       barChart.notifyDataSetChanged();
+                       barChart.invalidate();
+                       barChart.moveViewToX(data.getEntryCount());
+                   }
+                });
+            }
+        });
+        executor.shutdown();
+    }
+
+    public void insertData(String m, long s){
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(new Runnable() {
+            @Override
+            public void run(){
+                try{sd.insert(new stepData(m,s));}
+                catch (Exception e){Log.e(TAG, "cannot write stepdata to db");}
+                updateGraph();
+            }
+        });
+        Log.d(TAG, "wrote stepdata to db");
+        executor.shutdown();
+    }
+
+    public void deleteData(){
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(new Runnable() {
+            @Override
+            public void run(){
+                try{sd.deleteAll();}
+                catch (Exception e){Log.e(TAG, "cannot delete stepdata");}
+            }
+        });
+        Log.d(TAG, "deleted all stepdata");
+        executor.shutdown();
     }
 }
