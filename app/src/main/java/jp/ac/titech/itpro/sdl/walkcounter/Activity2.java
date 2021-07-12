@@ -174,7 +174,7 @@ public class Activity2 extends Activity {
         else if(c >= 553){return "お好み焼き1枚";}
         else if(c >= 524){return "ビッグマック1個";}
         else if(c >= 500){return "ポテトチップス(塩)1袋";}
-        else if(c >= 471){return "ハンバーガー1個";}
+        else if(c >= 471){return "ハンバーグ1個";}
         else if(c >= 457){return "ミラノ風ドリア1皿";}
         else if(c >= 423){return "餃子1人前";}
         else if(c >= 401){return "塩ラーメン1杯";}
