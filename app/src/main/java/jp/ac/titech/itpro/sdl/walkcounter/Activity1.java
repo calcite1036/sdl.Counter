@@ -227,6 +227,7 @@ public class Activity1 extends Activity implements SensorEventListener {
             public void run(){
                 try{sd.deleteAll();}
                 catch (Exception e){Log.e(TAG, "cannot delete stepdata");}
+                updateGraph();
             }
         });
         Log.d(TAG, "deleted all stepdata");
